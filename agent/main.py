@@ -36,10 +36,13 @@ def prewarm(proc: JobProcess):
 
 async def entrypoint(ctx: JobContext):
     # Default prompt
-    default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
-    prefix_prompt = "You are an AI assistant that helps people. You should be friendly and helpful. Remember these important rules: "
+    prefix_prompt = "You are an AI assistant that helps people. Your name is {assistant_name}. You should be friendly and helpful. Remember these important rules: "
     suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts."
 
+    # Default values
+    default_name = "Assistant"
+    default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+    wrapped_default_prompt = prefix_prompt.format(assistant_name=default_name) + default_prompt + suffix_prompt
     # Default prompt with wrappers
     #default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
     wrapped_default_prompt = f"{prefix_prompt}{default_prompt}{suffix_prompt}"
@@ -71,12 +74,37 @@ async def entrypoint(ctx: JobContext):
     def on_participant_attributes_changed(
         changed_attributes: dict[str, str], participant: rtc.Participant
     ):
-        nonlocal agent  # Make sure we can access the agent
+        nonlocal agent
         
         if participant.kind != rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD:
             return
 
-        # Handle voice changes
+        # Get current name and prompt
+        current_name = participant.attributes.get("assistant_name", default_name)
+        current_prompt = participant.attributes.get("custom_prompt", default_prompt)
+
+        # Update if either name or prompt changes
+        if "assistant_name" in changed_attributes or "custom_prompt" in changed_attributes:
+            logger.info(f"Updating assistant configuration for participant {participant.identity}")
+            
+            # Create the wrapped prompt with current name and prompt
+            wrapped_prompt = prefix_prompt.format(assistant_name=current_name) + current_prompt + suffix_prompt
+            
+            # Update the chat context
+            agent.chat_ctx.messages[0] = ChatMessage(
+                role="system",
+                content=wrapped_prompt
+            )
+            
+            if not (is_agent_speaking or is_user_speaking):
+                if "assistant_name" in changed_attributes:
+                    asyncio.create_task(
+                        agent.say(f"I'll now respond as {current_name}. How can I help you?", allow_interruptions=True)
+                    )
+                else:
+                    asyncio.create_task(
+                        agent.say("My prompt has been updated. How can I assist you?", allow_interruptions=True)
+                    )
         if "voice" in changed_attributes:
             voice_id = participant.attributes.get("voice")
             if not voice_id:

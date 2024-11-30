@@ -45,11 +45,13 @@ const mobileBarWidth = 48;
 const barCount = 5;
 const defaultVolumes = Array.from({ length: barCount }, () => [0.0]);
 
+
 export default function Assistant({ title, logo, onConnect }: AssistantProps) {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [customPrompt, setCustomPrompt] = useState(
     "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
   );
+  const [assistantName, setAssistantName] = useState("Assistant");
   const { localParticipant } = useLocalParticipant();
   const [currentVoiceId, setCurrentVoiceId] = useState<string>("");
   const [showVoices, setShowVoices] = useState(true);
@@ -78,7 +80,6 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     }
   }, [localParticipant, roomState]);
 
-  // use voices provided by the agent
   useEffect(() => {
     if (agentAttributes?.voices) {
       setVoices(JSON.parse(agentAttributes.voices));
@@ -102,33 +103,35 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     9
   );
 
-  
+  // Simplified change handlers that only update local state
+  const handleNameChange = useCallback((newName: string) => {
+    setAssistantName(newName);
+  }, []);
+
   const handlePromptChange = useCallback((newPrompt: string) => {
+    setCustomPrompt(newPrompt);
+  }, []);
+
+  // Combined apply changes function
+  const applyPromptChanges = useCallback(() => {
     try {
-      setCustomPrompt(newPrompt);
       if (localParticipant && roomState === ConnectionState.Connected) {
+        // Update both attributes at once
         localParticipant.setAttributes({
           ...localParticipant.attributes,
-          custom_prompt: newPrompt
+          assistant_name: assistantName,
+          custom_prompt: customPrompt
+        }).then(() => {
+          // Close the editor after successful update
+          setShowPromptEditor(false);
+        }).catch((error) => {
+          console.error('Failed to update attributes:', error);
         });
       }
     } catch (error) {
-      console.error('Failed to update prompt:', error);
-      // Revert if failed
-      setCustomPrompt(prev => prev);
+      console.error('Failed to apply changes:', error);
     }
-  }, [localParticipant, roomState]);
-
-  const applyPromptChanges = useCallback(() => {
-    try {
-      if (roomState === ConnectionState.Connected) {
-        handlePromptChange(customPrompt);
-        setShowPromptEditor(false);
-      }
-    } catch (error) {
-      console.error('Failed to apply prompt changes:', error);
-    }
-  }, [roomState, customPrompt, handlePromptChange]);
+  }, [localParticipant, roomState, assistantName, customPrompt]);
 
   const onSelectVoice = useCallback(
     async (voiceId: string) => {
@@ -157,7 +160,7 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     >
       <div className="flex flex-col gap-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-mono font-semibold text-sm">Custom Assistant Prompt</h3>
+          <h3 className="font-mono font-semibold text-sm">Assistant Configuration</h3>
           <Button
             state="secondary"
             size="small"
@@ -166,12 +169,35 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
             Close
           </Button>
         </div>
-        <textarea
-          className="w-full p-3 border rounded-md font-mono text-sm resize-none"
-          value={customPrompt}
-          onChange={(e) => handlePromptChange(e.target.value)}
-          rows={4}
-        />
+        
+        {/* Name Input */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="assistant-name" className="text-sm font-medium">
+            Assistant Name
+          </label>
+          <input
+            id="assistant-name"
+            className="w-full p-3 border rounded-md font-mono text-sm"
+            value={assistantName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Enter assistant name"
+          />
+        </div>
+
+        {/* Prompt Input */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="custom-prompt" className="text-sm font-medium">
+            Custom Assistant Prompt
+          </label>
+          <textarea
+            id="custom-prompt"
+            className="w-full p-3 border rounded-md font-mono text-sm resize-none"
+            value={customPrompt}
+            onChange={(e) => handlePromptChange(e.target.value)}
+            rows={4}
+          />
+        </div>
+
         <Button
           state="primary"
           size="medium"
@@ -181,7 +207,7 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
         </Button>
       </div>
     </motion.div>
-  ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor]);
+  ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor, assistantName, handleNameChange]);
 
   const audioTileContent = useMemo(() => {
    const conversationToolbar = (
