@@ -13,7 +13,13 @@ type TokenGeneratorData = {
 const ConnectionContext = createContext<TokenGeneratorData | undefined>(
   undefined
 );
-
+export const useConnection = () => {
+  const context = React.useContext(ConnectionContext);
+  if (context === undefined) {
+    throw new Error("useConnection must be used within a ConnectionProvider");
+  }
+  return context;
+};
 export const ConnectionProvider = ({
   children,
 }: {
@@ -26,15 +32,17 @@ export const ConnectionProvider = ({
   }>({ shouldConnect: false });
 
   const connect = useCallback(async () => {
-    let token = "";
-    let url = "";
-    if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
-      throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
+    try {
+      if (!process.env.NEXT_PUBLIC_LIVEKIT_URL) {
+        throw new Error("NEXT_PUBLIC_LIVEKIT_URL is not set");
+      }
+      const url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
+      const { accessToken } = await fetch("/api/token").then((res) => res.json());
+      setConnectionDetails({ wsUrl: url, token: accessToken, shouldConnect: true });
+    } catch (error) {
+      console.error('Connection error:', error);
+      setConnectionDetails(prev => ({ ...prev, shouldConnect: false }));
     }
-    url = process.env.NEXT_PUBLIC_LIVEKIT_URL;
-    const { accessToken } = await fetch("/api/token").then((res) => res.json());
-    token = accessToken;
-    setConnectionDetails({ wsUrl: url, token, shouldConnect: true });
   }, []);
 
   const disconnect = useCallback(async () => {
@@ -54,12 +62,4 @@ export const ConnectionProvider = ({
       {children}
     </ConnectionContext.Provider>
   );
-};
-
-export const useConnection = () => {
-  const context = React.useContext(ConnectionContext);
-  if (context === undefined) {
-    throw new Error("useConnection must be used within a ConnectionProvider");
-  }
-  return context;
 };

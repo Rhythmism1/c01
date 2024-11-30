@@ -1,5 +1,4 @@
 "use client";
-
 import { LoadingSVG } from "@/components/button/LoadingSVG";
 import { Header } from "@/components/Header";
 import { Tile } from "@/components/Tile";
@@ -48,9 +47,13 @@ const defaultVolumes = Array.from({ length: barCount }, () => [0.0]);
 
 export default function Assistant({ title, logo, onConnect }: AssistantProps) {
   const [voices, setVoices] = useState<Voice[]>([]);
+  const [customPrompt, setCustomPrompt] = useState(
+    "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+  );
   const { localParticipant } = useLocalParticipant();
   const [currentVoiceId, setCurrentVoiceId] = useState<string>("");
   const [showVoices, setShowVoices] = useState(true);
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
   const windowSize = useWindowResize();
   const {
     agent: agentParticipant,
@@ -99,65 +102,126 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     9
   );
 
+  
+  const handlePromptChange = useCallback((newPrompt: string) => {
+    try {
+      setCustomPrompt(newPrompt);
+      if (localParticipant && roomState === ConnectionState.Connected) {
+        localParticipant.setAttributes({
+          ...localParticipant.attributes,
+          custom_prompt: newPrompt
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update prompt:', error);
+      // Revert if failed
+      setCustomPrompt(prev => prev);
+    }
+  }, [localParticipant, roomState]);
+
+  const applyPromptChanges = useCallback(() => {
+    try {
+      if (roomState === ConnectionState.Connected) {
+        handlePromptChange(customPrompt);
+        setShowPromptEditor(false);
+      }
+    } catch (error) {
+      console.error('Failed to apply prompt changes:', error);
+    }
+  }, [roomState, customPrompt, handlePromptChange]);
+
   const onSelectVoice = useCallback(
-    (voiceId: string) => {
-      setCurrentVoiceId(voiceId);
-      localParticipant.setAttributes({
-        voice: voiceId,
-      });
+    async (voiceId: string) => {
+      try {
+        setCurrentVoiceId(voiceId);
+        if (localParticipant && roomState === ConnectionState.Connected) {
+          await localParticipant.setAttributes({
+            ...localParticipant.attributes,
+            voice: voiceId,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to update voice:', error);
+        setCurrentVoiceId(prev => prev);
+      }
     },
-    [localParticipant, setCurrentVoiceId]
+    [localParticipant, roomState]
   );
 
-  const audioTileContent = useMemo(() => {
-    const conversationToolbar = (
-      <div className="fixed z-50 md:absolute left-1/2 bottom-4 md:bottom-auto md:top-1/2 -translate-y-1/2 -translate-x-1/2">
-        <motion.div
-          className="flex gap-3"
-          initial={{
-            opacity: 0,
-            y: 25,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          exit={{
-            opacity: 0,
-            y: 25,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 260,
-            damping: 20,
-          }}
-        >
-          <Button
-            state="destructive"
-            className=""
-            size="medium"
-            onClick={() => {
-              onConnect(roomState === ConnectionState.Disconnected);
-            }}
-          >
-            Disconnect
-          </Button>
-          <MicrophoneButton localMultibandVolume={localMultibandVolume} />
+  const promptEditorPanel = useMemo(() => (
+    <motion.div 
+      className="absolute bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg"
+      initial={{ y: "100%" }}
+      animate={{ y: showPromptEditor ? 0 : "100%" }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <h3 className="font-mono font-semibold text-sm">Custom Assistant Prompt</h3>
           <Button
             state="secondary"
-            size="medium"
-            style={{
-              backgroundColor: showVoices ? "rgba(0, 0, 0, 0.1)" : "",
-            }}
-            onClick={() => {
-              setShowVoices(!showVoices);
-            }}
+            size="small"
+            onClick={() => setShowPromptEditor(false)}
           >
-            <MenuSVG />
+            Close
           </Button>
-        </motion.div>
+        </div>
+        <textarea
+          className="w-full p-3 border rounded-md font-mono text-sm resize-none"
+          value={customPrompt}
+          onChange={(e) => handlePromptChange(e.target.value)}
+          rows={4}
+        />
+        <Button
+          state="primary"
+          size="medium"
+          onClick={applyPromptChanges}
+        >
+          Apply Changes
+        </Button>
       </div>
-    );
+    </motion.div>
+  ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor]);
+
+  const audioTileContent = useMemo(() => {
+   const conversationToolbar = (
+    <div className="fixed z-50 md:absolute left-1/2 bottom-4 md:bottom-auto md:top-1/2 -translate-y-1/2 -translate-x-1/2">
+      <motion.div
+        className="flex gap-3"
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 25 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      >
+        <Button
+          state="destructive"
+          className=""
+          size="medium"
+          onClick={() => onConnect(false)}
+        >
+          Disconnect
+        </Button>
+        <MicrophoneButton localMultibandVolume={localMultibandVolume} />
+        <Button
+          state="secondary"
+          size="medium"
+          onClick={() => setShowPromptEditor(true)}
+        >
+          Edit Prompt
+        </Button>
+        <Button
+          state="secondary"
+          size="medium"
+          style={{ backgroundColor: showVoices ? "rgba(0, 0, 0, 0.1)" : "" }}
+          onClick={() => setShowVoices(!showVoices)}
+        >
+          <MenuSVG />
+        </Button>
+      </motion.div>
+    </div>
+  );
+
+    
     const isLoading =
       roomState === ConnectionState.Connecting ||
       (!agentAudioTrack && roomState === ConnectionState.Connected);
@@ -289,7 +353,7 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
         }
       />
       <div
-        className={`flex grow w-full selection:bg-cyan-900`}
+        className={`flex grow w-full selection:bg-cyan-900 relative`}
         style={{ height: `calc(100% - ${headerHeight}px)` }}
       >
         <div className="flex-col grow basis-1/2 gap-4 h-full md:flex">
@@ -321,7 +385,9 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
           </div>
           <div className="pointer-events-none absolute z-10 bottom-0 w-full h-64 bg-gradient-to-t from-white to-transparent"></div>
         </div>
+        {promptEditorPanel}
       </div>
     </>
   );
+
 }

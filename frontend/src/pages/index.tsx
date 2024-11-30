@@ -94,6 +94,9 @@ export function HomeInner() {
           serverUrl={wsUrl}
           token={token}
           connect={shouldConnect}
+          options={{
+            //connectionTimeout: 10000, // 10 second timeout
+          }}
           onError={(e) => {
             setToastMessage({ message: e.message, type: "error" });
             console.error(e);

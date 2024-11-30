@@ -18,13 +18,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 def prewarm(proc: JobProcess):
     # preload models when process starts to speed up first interaction
     proc.userdata["vad"] = silero.VAD.load()
 
     # fetch cartesia voices
-
     headers = {
         "X-API-Key": os.getenv("CARTESIA_API_KEY", ""),
         "Cartesia-Version": "2024-08-01",
@@ -36,13 +34,20 @@ def prewarm(proc: JobProcess):
     else:
         logger.warning(f"Failed to fetch Cartesia voices: {response.status_code}")
 
-
 async def entrypoint(ctx: JobContext):
+    # Default prompt
+    default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+    prefix_prompt = "You are an AI assistant that helps people. You should be friendly and helpful. Remember these important rules: "
+    suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts."
+
+    # Default prompt with wrappers
+    #default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+    wrapped_default_prompt = f"{prefix_prompt}{default_prompt}{suffix_prompt}"
     initial_ctx = ChatContext(
         messages=[
             ChatMessage(
                 role="system",
-                content="You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech.",
+                content=wrapped_default_prompt
             )
         ]
     )
@@ -66,24 +71,24 @@ async def entrypoint(ctx: JobContext):
     def on_participant_attributes_changed(
         changed_attributes: dict[str, str], participant: rtc.Participant
     ):
-        # check for attribute changes from the user itself
+        nonlocal agent  # Make sure we can access the agent
+        
         if participant.kind != rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD:
             return
 
+        # Handle voice changes
         if "voice" in changed_attributes:
             voice_id = participant.attributes.get("voice")
-            logger.info(
-                f"participant {participant.identity} requested voice change: {voice_id}"
-            )
             if not voice_id:
                 return
-
+                
             voice_data = next(
                 (voice for voice in cartesia_voices if voice["id"] == voice_id), None
             )
             if not voice_data:
                 logger.warning(f"Voice {voice_id} not found")
                 return
+                
             if "embedding" in voice_data:
                 model = "sonic-english"
                 language = "en"
@@ -93,13 +98,26 @@ async def entrypoint(ctx: JobContext):
                 tts._opts.voice = voice_data["embedding"]
                 tts._opts.model = model
                 tts._opts.language = language
-                # allow user to confirm voice change as long as no one is speaking
+                
                 if not (is_agent_speaking or is_user_speaking):
                     asyncio.create_task(
                         agent.say("How do I sound now?", allow_interruptions=True)
                     )
 
-    await ctx.connect()
+        # Handle prompt changes
+        if "custom_prompt" in changed_attributes:
+            new_prompt = participant.attributes.get("custom_prompt")
+            if new_prompt:
+                logger.info(f"Updating prompt for participant {participant.identity}")
+                # Update the chat context with the new prompt
+                agent.chat_ctx.messages[0] = ChatMessage(
+                    role="system",
+                    content=new_prompt
+                )
+                if not (is_agent_speaking or is_user_speaking):
+                    asyncio.create_task(
+                        agent.say("My prompt has been updated. How can I assist you?", allow_interruptions=True)
+                    )
 
     @agent.on("agent_started_speaking")
     def agent_started_speaking():
@@ -121,6 +139,8 @@ async def entrypoint(ctx: JobContext):
         nonlocal is_user_speaking
         is_user_speaking = False
 
+    await ctx.connect()
+
     # set voice listing as attribute for UI
     voices = []
     for voice in cartesia_voices:
@@ -135,7 +155,6 @@ async def entrypoint(ctx: JobContext):
 
     agent.start(ctx.room)
     await agent.say("Hi there, how are you doing today?", allow_interruptions=True)
-
 
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
