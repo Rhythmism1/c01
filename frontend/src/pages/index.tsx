@@ -6,7 +6,8 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import Head from "next/head";
 import { useCallback, useState } from "react";
-
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Assistant from "@/components/Assistant";
 import { PlaygroundToast, ToastType } from "@/components/toast/PlaygroundToast";
 import { ConnectionProvider, useConnection } from "@/hooks/useConnection";
@@ -20,6 +21,19 @@ export default function Home() {
 }
 
 export function HomeInner() {
+  const router = useRouter();
+  
+  // Add authentication check
+  useEffect(() => {
+    // Check if user is logged in by looking for session data
+    // You can store this in localStorage when user logs in
+    const isLoggedIn = localStorage.getItem('user');
+    
+    if (!isLoggedIn) {
+      router.push('/login');
+    }
+  }, [router]);
+
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: ToastType;

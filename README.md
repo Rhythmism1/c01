@@ -28,7 +28,11 @@ Copy `.env.example` to `.env.local` and set the environment variables. Then run:
 ```bash
 cd frontend
 npm install
+
+npm install mongodb bcryptjs
+npm i --save-dev @types/bcryptjs
 npm run dev
+
 ```
 
 ### Agent
