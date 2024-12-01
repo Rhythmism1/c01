@@ -34,11 +34,11 @@ def prewarm(proc: JobProcess):
         logger.warning(f"Failed to fetch Cartesia voices: {response.status_code}")
 
 async def entrypoint(ctx: JobContext):
-    prefix_prompt = "You are an employee. Your name is {assistant_name}. You should ONLY talk when referred to directly with your name. otherwise, you are to say the word 'silent' and nothing else."
-    suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts."
+    prefix_prompt = "You are an employee in a zoom call. Your name is {assistant_name}. You should ONLY talk when referred to directly with your name. otherwise, you are to say the word 'silent' and nothing else. In the case that you are in a conversation currently, you can respon with something otehr than 'silent'  You are to also continue conversations if they arise. otherwise, stay silent.IF someone asks your name, you are not to respond unless prefixed with the mention to you. you will be in a group chat setting so you will get alot of communication from many people."
+    suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts.You are an employee. we are having a conversation, no special formatting or headings, just natural speech. remember that if you are already in a conversation, and someone asks you a question, you are to respond."
 
-    default_name = "Assistant"
-    default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+    default_name = "Jacob"
+    default_prompt = "You are an employee. we are having a conversation, no special formatting or headings, just natural speech. remember that if you are already in a conversation, and someone asks you a question, you are to respond. "
     wrapped_default_prompt = prefix_prompt.format(assistant_name=default_name) + default_prompt + suffix_prompt
     
     initial_ctx = ChatContext(
@@ -183,7 +183,7 @@ async def entrypoint(ctx: JobContext):
     await ctx.room.local_participant.set_attributes({"voices": json.dumps(voices)})
 
     agent.start(ctx.room)
-    await agent.say("Hi there, I am ready to join the zoom call and will remain silent until I am referred to.", allow_interruptions=True)
+    await agent.say("Hi there, I am ready to join the zoom call and will remain quiet until I am referred to.", allow_interruptions=True)
 
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
