@@ -13,6 +13,7 @@ import {
   import { ConnectionProvider, useConnection } from "@/hooks/useConnection";
   
   export default function Home() {
+    
     return (
       <ConnectionProvider>
         <HomeInner />
