@@ -1,5 +1,5 @@
 # Cartesia Voice Agent Example
-
+Latest.
 This is a demo of a LiveKit [Voice Pipeline Agent](https://docs.livekit.io/agents/voice-agent/voice-pipeline/) using [Cartesia](https://www.cartesia.ai/) and GPT-4o-mini.
 
 The example includes a custom Next.js frontend and Python agent.

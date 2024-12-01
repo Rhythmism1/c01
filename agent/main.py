@@ -3,6 +3,8 @@ import json
 import os
 import requests
 
+from typing import List, Any, AsyncIterable
+
 from livekit import rtc
 from livekit.agents import JobContext, WorkerOptions, cli, JobProcess
 from livekit.agents.llm import (
@@ -12,17 +14,14 @@ from livekit.agents.llm import (
 from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.agents.log import logger
 from livekit.plugins import deepgram, silero, cartesia, openai
-from typing import List, Any
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def prewarm(proc: JobProcess):
-    # preload models when process starts to speed up first interaction
     proc.userdata["vad"] = silero.VAD.load()
 
-    # fetch cartesia voices
     headers = {
         "X-API-Key": os.getenv("CARTESIA_API_KEY", ""),
         "Cartesia-Version": "2024-08-01",
@@ -35,17 +34,13 @@ def prewarm(proc: JobProcess):
         logger.warning(f"Failed to fetch Cartesia voices: {response.status_code}")
 
 async def entrypoint(ctx: JobContext):
-    # Default prompt
-    prefix_prompt = "You are an AI assistant that helps people. Your name is {assistant_name}. You should be friendly and helpful. Remember these important rules: "
+    prefix_prompt = "You are an employee. Your name is {assistant_name}. You should ONLY talk when referred to directly with your name. otherwise, you are to say the word 'silent' and nothing else."
     suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts."
 
-    # Default values
     default_name = "Assistant"
     default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
     wrapped_default_prompt = prefix_prompt.format(assistant_name=default_name) + default_prompt + suffix_prompt
-    # Default prompt with wrappers
-    #default_prompt = "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
-    wrapped_default_prompt = f"{prefix_prompt}{default_prompt}{suffix_prompt}"
+    
     initial_ctx = ChatContext(
         messages=[
             ChatMessage(
@@ -59,12 +54,39 @@ async def entrypoint(ctx: JobContext):
     tts = cartesia.TTS(
         voice="248be419-c632-4f23-adf1-5324ed7dbf1d",
     )
+
+    async def before_tts(assistant: VoicePipelineAgent, text: str | AsyncIterable[str]) -> str | AsyncIterable[str]:
+        logger.debug(f"before_tts called with text type: {type(text)}")
+        
+        if isinstance(text, str):
+            logger.debug(f"Processing string text: '{text}'")
+            if 'silent' in text.lower():
+                return ""
+            return text
+        else:
+            # Handle async generator
+            async def process_stream():
+                try:
+                    async for chunk in text:
+                        logger.debug(f"Processing chunk: '{chunk}'")
+                        if isinstance(chunk, str) and 'silent' in chunk.lower():
+                            logger.debug("Silent detected in chunk, yielding empty string")
+                            yield ""
+                        else:
+                            yield chunk
+                except Exception as e:
+                    logger.error(f"Error processing stream: {e}")
+                    raise
+            
+            return process_stream()
+
     agent = VoicePipelineAgent(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(),
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=tts,
         chat_ctx=initial_ctx,
+        before_tts_cb=before_tts
     )
 
     is_user_speaking = False
@@ -79,18 +101,14 @@ async def entrypoint(ctx: JobContext):
         if participant.kind != rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD:
             return
 
-        # Get current name and prompt
         current_name = participant.attributes.get("assistant_name", default_name)
         current_prompt = participant.attributes.get("custom_prompt", default_prompt)
 
-        # Update if either name or prompt changes
         if "assistant_name" in changed_attributes or "custom_prompt" in changed_attributes:
             logger.info(f"Updating assistant configuration for participant {participant.identity}")
             
-            # Create the wrapped prompt with current name and prompt
             wrapped_prompt = prefix_prompt.format(assistant_name=current_name) + current_prompt + suffix_prompt
             
-            # Update the chat context
             agent.chat_ctx.messages[0] = ChatMessage(
                 role="system",
                 content=wrapped_prompt
@@ -105,6 +123,7 @@ async def entrypoint(ctx: JobContext):
                     asyncio.create_task(
                         agent.say("My prompt has been updated. How can I assist you?", allow_interruptions=True)
                     )
+
         if "voice" in changed_attributes:
             voice_id = participant.attributes.get("voice")
             if not voice_id:
@@ -132,21 +151,6 @@ async def entrypoint(ctx: JobContext):
                         agent.say("How do I sound now?", allow_interruptions=True)
                     )
 
-        # Handle prompt changes
-        if "custom_prompt" in changed_attributes:
-            new_prompt = participant.attributes.get("custom_prompt")
-            if new_prompt:
-                logger.info(f"Updating prompt for participant {participant.identity}")
-                # Update the chat context with the new prompt
-                agent.chat_ctx.messages[0] = ChatMessage(
-                    role="system",
-                    content=new_prompt
-                )
-                if not (is_agent_speaking or is_user_speaking):
-                    asyncio.create_task(
-                        agent.say("My prompt has been updated. How can I assist you?", allow_interruptions=True)
-                    )
-
     @agent.on("agent_started_speaking")
     def agent_started_speaking():
         nonlocal is_agent_speaking
@@ -169,20 +173,17 @@ async def entrypoint(ctx: JobContext):
 
     await ctx.connect()
 
-    # set voice listing as attribute for UI
     voices = []
     for voice in cartesia_voices:
-        voices.append(
-            {
-                "id": voice["id"],
-                "name": voice["name"],
-            }
-        )
+        voices.append({
+            "id": voice["id"],
+            "name": voice["name"],
+        })
     voices.sort(key=lambda x: x["name"])
     await ctx.room.local_participant.set_attributes({"voices": json.dumps(voices)})
 
     agent.start(ctx.room)
-    await agent.say("Hi there, how are you doing today?", allow_interruptions=True)
+    await agent.say("Hi there, I am ready to join the zoom call and will remain silent until I am referred to.", allow_interruptions=True)
 
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
