@@ -49,7 +49,7 @@ const defaultVolumes = Array.from({ length: barCount }, () => [0.0]);
 export default function Assistant({ title, logo, onConnect }: AssistantProps) {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [customPrompt, setCustomPrompt] = useState(
-    "You are a voice assistant created by LiveKit. Your interface with users will be voice. Pretend we're having a conversation, no special formatting or headings, just natural speech."
+    "You are an employee at a company. respond as such. Here is what you need to know for the zoom call:__"
   );
   const [assistantName, setAssistantName] = useState("Assistant");
   const { localParticipant } = useLocalParticipant();
