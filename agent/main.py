@@ -103,7 +103,9 @@ async def entrypoint(ctx: JobContext):
 
         current_name = participant.attributes.get("assistant_name", default_name)
         current_prompt = participant.attributes.get("custom_prompt", default_prompt)
+        custom_voice_id = participant.attributes.get("custom_voice_id")
 
+        # Handle name and prompt changes
         if "assistant_name" in changed_attributes or "custom_prompt" in changed_attributes:
             logger.info(f"Updating assistant configuration for participant {participant.identity}")
             
@@ -124,19 +126,19 @@ async def entrypoint(ctx: JobContext):
                         agent.say("My prompt has been updated. How can I assist you?", allow_interruptions=True)
                     )
 
-        if "voice" in changed_attributes:
-            voice_id = participant.attributes.get("voice")
+        # Handle voice changes
+        if "voice" in changed_attributes or "custom_voice_id" in changed_attributes:
+            voice_id = custom_voice_id if custom_voice_id else participant.attributes.get("voice")
             if not voice_id:
                 return
                 
+            # First try to find in pre-loaded voices
             voice_data = next(
                 (voice for voice in cartesia_voices if voice["id"] == voice_id), None
             )
-            if not voice_data:
-                logger.warning(f"Voice {voice_id} not found")
-                return
-                
-            if "embedding" in voice_data:
+            
+            if voice_data and "embedding" in voice_data:
+                # Handle pre-loaded voice
                 model = "sonic-english"
                 language = "en"
                 if "language" in voice_data and voice_data["language"] != "en":
@@ -145,11 +147,23 @@ async def entrypoint(ctx: JobContext):
                 tts._opts.voice = voice_data["embedding"]
                 tts._opts.model = model
                 tts._opts.language = language
+            else:
+                # Handle custom voice ID directly
+                try:
+                    # Attempt to use the custom voice ID directly
+                    tts._opts.voice = voice_id
+                    tts._opts.model = "sonic-english"  # Default to English for custom voices
+                    tts._opts.language = "en"
+                    logger.info(f"Using custom voice ID: {voice_id}")
+                except Exception as e:
+                    logger.error(f"Failed to set custom voice ID: {e}")
+                    return
                 
-                if not (is_agent_speaking or is_user_speaking):
-                    asyncio.create_task(
-                        agent.say("How do I sound now?", allow_interruptions=True)
-                    )
+            # Provide feedback about voice change
+            if not (is_agent_speaking or is_user_speaking):
+                asyncio.create_task(
+                    agent.say("How do I sound now?", allow_interruptions=True)
+                )
 
     @agent.on("agent_started_speaking")
     def agent_started_speaking():

@@ -150,7 +150,6 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     },
     [localParticipant, roomState]
   );
-
   const promptEditorPanel = useMemo(() => (
     <motion.div 
       className="absolute bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-t-lg"
@@ -184,6 +183,20 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
           />
         </div>
 
+        {/* Voice ID Input */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="voice-id" className="text-sm font-medium">
+            Custom Voice ID
+          </label>
+          <input
+            id="voice-id"
+            className="w-full p-3 border rounded-md font-mono text-sm"
+            value={currentVoiceId}
+            onChange={(e) => setCurrentVoiceId(e.target.value)}
+            placeholder="Paste voice ID here"
+          />
+        </div>
+
         {/* Prompt Input */}
         <div className="flex flex-col gap-2">
           <label htmlFor="custom-prompt" className="text-sm font-medium">
@@ -201,14 +214,20 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
         <Button
           state="primary"
           size="medium"
-          onClick={applyPromptChanges}
+          onClick={async () => {
+            // Update the voice ID first
+            if (currentVoiceId) {
+              await onSelectVoice(currentVoiceId);
+            }
+            // Then apply the prompt changes
+            applyPromptChanges();
+          }}
         >
           Apply Changes
         </Button>
       </div>
     </motion.div>
-  ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor, assistantName, handleNameChange]);
-
+  ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor, assistantName, handleNameChange, currentVoiceId, onSelectVoice]);
   const audioTileContent = useMemo(() => {
    const conversationToolbar = (
     <div className="fixed z-50 md:absolute left-1/2 bottom-4 md:bottom-auto md:top-1/2 -translate-y-1/2 -translate-x-1/2">
