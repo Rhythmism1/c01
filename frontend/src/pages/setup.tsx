@@ -8,7 +8,7 @@ import { Button } from "@/components/button/Button";
 
 export default function Setup() {
   const router = useRouter();
-  const title = "Setup Guide - LiveKit Voice Agent with Cartesia";
+  const title = "Setup Guide - Voice Agent with Cartesia";
 
   const setupSteps = [
     {
@@ -56,14 +56,14 @@ export default function Setup() {
     <>
       <Head>
         <title>{title}</title>
-        <meta name="description" content="Setup instructions for LiveKit Voice Agent with Cartesia" />
+        <meta name="description" content="Setup instructions for your Voice Agent with Cartesia" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className="relative flex min-h-screen flex-col bg-white repeating-square-background">
         <Header 
-          logo={<img src="/cartesia-logo.svg" alt="Cartesia logo" />}
+          logo={<img src="/new-logo.png" alt="prance logo" className="h-8" />}
           title={title}
           height={64}
           onConnectClicked={() => {}}
@@ -78,7 +78,7 @@ export default function Setup() {
           >
             <h1 className="text-4xl font-bold mb-4">Getting Started</h1>
             <p className="text-gray-600 text-lg">
-              Follow these steps to set up your LiveKit Voice Agent with Cartesia
+              Follow these steps to set up your Voice Agent with Cartesia
             </p>
           </motion.div>
 

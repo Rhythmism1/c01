@@ -18,7 +18,7 @@ export const Header = ({ logo, title, height }: PlaygroundHeader) => {
     >
       <div className="flex flex-col md:flex-row md:items-center md:gap-3 md:basis-2/3">
         <div className="flex md:basis-1/2">
-          <a href="https://www.cartesia.ai" target="_blank">
+          <a href="http://localhost:3000/" target="_blank">
             {logo ?? <LKLogo />}
           </a>
         </div>
@@ -27,7 +27,7 @@ export const Header = ({ logo, title, height }: PlaygroundHeader) => {
         </div>
       </div>
       <div className="flex md:basis-1/3 justify-end items-center gap-2">
-        <a href="https://github.com/livekit/agents" target="_blank">
+        <a href="https://github.com/cartesia-ai" target="_blank">
           <Button state="secondary" size="small">
             <div className="flex gap-2">
               <span>Learn more</span>

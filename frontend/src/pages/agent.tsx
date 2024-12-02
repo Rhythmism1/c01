@@ -41,9 +41,9 @@ import {
     } | null>(null);
     const { shouldConnect, wsUrl, token, connect, disconnect } = useConnection();
   
-    const title = "LiveKit Voice Agent with Cartesia";
+    const title = "prance Zoom Call Joiner";
     const description =
-      "This is a demo of a LiveKit Voice Pipeline Agent using Cartesia and GPT-4o-mini.";
+      "Agent Page";
   
     const handleConnect = useCallback(
       async (c: boolean) => {
@@ -119,7 +119,7 @@ import {
           >
             <Assistant
               title={title}
-              logo={<img src="/cartesia-logo.svg" alt="Cartesia logo" />}
+              logo={<img src="/new-logo.png" alt="prance logo" className="h-8" />}
               onConnect={handleConnect}
             />
             <RoomAudioRenderer />

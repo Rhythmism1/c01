@@ -5,8 +5,8 @@ import { Button } from "@/components/button/Button";
 
 export default function LandingPage() {
   const router = useRouter();
-  const title = "LiveKit Voice Agent with Cartesia";
-  const description = "This is a demo of a LiveKit Voice Pipeline Agent using Cartesia and GPT-4o-mini.";
+  const title = "Zoom Call Joiner";
+  const description = "AI your zoom calls without invasive and detectable software.";
 
   return (
     <>
@@ -21,7 +21,7 @@ export default function LandingPage() {
         {/* Header Section */}
         <div className="flex gap-4 py-4 px-4 text-cyan-500 justify-between items-center shrink-0 border-b-2 border-black">
           <div className="flex items-center gap-3">
-            <img src="/cartesia-logo.svg" alt="Cartesia logo" className="h-8" />
+           <img src="/new-logo.png" alt="prance logo" className="h-8" />
             <span className="font-semibold text-black">{title}</span>
           </div>
         </div>
@@ -35,10 +35,10 @@ export default function LandingPage() {
             className="text-center max-w-2xl"
           >
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-black">
-              Welcome to Cartesia Voice Agent
+             Never Join a BS Zoom Call Again.
             </h1>
             <p className="text-lg md:text-xl text-gray-600 mb-8">
-              Experience the next generation of voice interaction powered by LiveKit and GPT-4
+              Experience the next generation of voice interaction powered by Cartesia, Livekit and GPT-4
             </p>
             
             <div className="flex flex-col md:flex-row gap-4 justify-center">
@@ -98,7 +98,7 @@ export default function LandingPage() {
 
         {/* Footer */}
         <footer className="py-6 text-center text-gray-600 border-t-2 border-black">
-          <p>© 2024 Cartesia. All rights reserved.</p>
+          <p>2024 Prance. By using our website you agree to our Terms and Conditions.</p>
         </footer>
       </main>
     </>
