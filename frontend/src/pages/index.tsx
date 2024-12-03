@@ -5,7 +5,7 @@ import { Button } from "@/components/button/Button";
 
 export default function LandingPage() {
   const router = useRouter();
-  const title = "Zoom Call Joiner";
+  const title = "";
   const description = "AI your zoom calls without invasive and detectable software.";
 
   return (
@@ -38,7 +38,7 @@ export default function LandingPage() {
              Never Join a BS Zoom Call Again.
             </h1>
             <p className="text-lg md:text-xl text-gray-600 mb-8">
-              Experience the next generation of voice interaction powered by Cartesia, Livekit and GPT-4
+              Experience the next generation of voice interaction powered by Cartesia, Livekit and GPT-4. AI your zoom calls. Impossible to detect.
             </p>
             
             <div className="flex flex-col md:flex-row gap-4 justify-center">
