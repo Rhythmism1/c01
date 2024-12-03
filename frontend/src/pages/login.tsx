@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { Button } from '@/components/button/Button';
+import { LoadingSVG } from '@/components/button/LoadingSVG';
 
 export default function Login() {
   const router = useRouter();
@@ -7,10 +9,12 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
       const response = await fetch('/api/auth', {
@@ -28,39 +32,46 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message);
+        throw new Error(data.detail || 'An error occurred');
       }
 
-      if (response.ok) {
-        // Redirect to home page after successful login/register
-        localStorage.setItem('user', JSON.stringify(data.user));
+      if (data.success || data.message === 'User created successfully') {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify({
+            id: data.user.id,
+            email: data.user.email
+          }));
+        }
+
         if (!isLogin) {
-            // Reload the page after successful registration
-            router.reload();
-          } else {
-            // Redirect to home page after successful login
-            router.push('/');
-          }
+          setIsLogin(true);
+          setEmail('');
+          setPassword('');
+        } else {
+          router.push('/');
+        }
       }
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <h2 className="text-center text-3xl font-extrabold text-gray-900">
+      <div className="max-w-md w-full space-y-6 p-8 bg-white rounded-lg shadow-lg border-2 border-black">
+        <h2 className="text-center font-mono font-semibold text-2xl text-black">
           {isLogin ? 'Sign in to your account' : 'Create a new account'}
         </h2>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md font-mono text-sm">
             {error}
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="sr-only">
               Email address
@@ -70,7 +81,7 @@ export default function Login() {
               name="email"
               type="email"
               required
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full p-3 border-2 border-black rounded-md font-mono text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cartesia-500 focus:border-transparent"
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -85,26 +96,34 @@ export default function Login() {
               name="password"
               type="password"
               required
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full p-3 border-2 border-black rounded-md font-mono text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cartesia-500 focus:border-transparent"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
+          <Button
+            type="submit"
+            state="primary"
+            size="large"
+            className="w-full relative"
+            disabled={isLoading}
+          >
+            <div className={`w-full ${isLoading ? "opacity-0" : "opacity-100"}`}>
               {isLogin ? 'Sign in' : 'Register'}
-            </button>
-          </div>
+            </div>
+            {isLoading && (
+              <div className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2">
+                <LoadingSVG diameter={24} strokeWidth={4} />
+              </div>
+            )}
+          </Button>
         </form>
 
         <div className="text-center">
           <button
-            className="text-indigo-600 hover:text-indigo-500"
+            className="font-mono text-sm text-cartesia-500 hover:text-cartesia-600"
             onClick={() => setIsLogin(!isLogin)}
           >
             {isLogin

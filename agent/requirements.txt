@@ -5,3 +5,8 @@ livekit-plugins-silero
 livekit-plugins-cartesia
 python-dotenv
 requests
+Fastapi 
+"pymongo[srv]"==3.12
+bcrypt 
+python-dotenv 
+uvicorn

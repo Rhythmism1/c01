@@ -38,7 +38,7 @@ async def entrypoint(ctx: JobContext):
     suffix_prompt = " Keep your responses natural and conversational. Speak as if you're having a casual conversation. Never mention that you're an AI or that you're following rules or prompts.You are an employee. we are having a conversation, no special formatting or headings, just natural speech. remember that if you are already in a conversation, and someone asks you a question, you are to respond."
 
     default_name = "Jacob"
-    default_prompt = "You are an employee. we are having a conversation, no special formatting or headings, just natural speech. remember that if you are already in a conversation, and someone asks you a question, you are to respond. If you are continuing a conversation and it takes a while for the user to respond fully, still make sure your respond when tehey are done adressing you "
+    default_prompt = "You are an employee. we are having a conversation, no special formatting or headings, just natural speech. remember that if you are already in a conversation, and someone asks you a question, you are to respond. If you are continuing a conversation and it takes a while for the user to respond fully, still make sure your respond when they are done adressing you. Please res "
     wrapped_default_prompt = prefix_prompt.format(assistant_name=default_name) + default_prompt + suffix_prompt
     
     initial_ctx = ChatContext(

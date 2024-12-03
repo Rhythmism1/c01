@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@livekit/krisp-noise-filter": "^0.2.13"
+  }
+}
