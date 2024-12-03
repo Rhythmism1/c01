@@ -197,7 +197,7 @@ async def entrypoint(ctx: JobContext):
     await ctx.room.local_participant.set_attributes({"voices": json.dumps(voices)})
 
     agent.start(ctx.room)
-    await agent.say("Hi there, I am ready to join the zoom call and will remain quiet until I am referred to. please edit the custom knowldege and my slash your name before deploying.", allow_interruptions=True)
+    await agent.say("Hi there, I am ready to join the zoom call and will remain quiet unless I am referred to. please edit the custom knowledge, put in your name, and your voice clone before deploying me. ", allow_interruptions=True)
 
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
