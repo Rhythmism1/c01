@@ -5,6 +5,9 @@ import { Tile } from "@/components/Tile";
 import { AgentMultibandAudioVisualizer } from "@/components/visualization/AgentMultibandAudioVisualizer";
 import { useMultibandTrackVolume } from "@/hooks/useTrackVolume";
 import { useWindowResize } from "@/hooks/useWindowResize";
+import { useRef } from 'react';
+import { Speaker } from 'lucide-react';
+
 import {
   useConnectionState,
   useLocalParticipant,
@@ -44,8 +47,89 @@ const mobileMinBarHeight = 48;
 const mobileBarWidth = 48;
 const barCount = 5;
 const defaultVolumes = Array.from({ length: barCount }, () => [0.0]);
+const AudioOutputSelector = () => {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<string>('');
+  const [isOpen, setIsOpen] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
+    const getDevices = async () => {
+      try {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputDevices = allDevices.filter(
+          (device): device is MediaDeviceInfo => device.kind === 'audiooutput'
+        );
+        setDevices(audioOutputDevices);
+        
+        if (audioOutputDevices.length > 0) {
+          setSelectedDevice(audioOutputDevices[0].deviceId);
+        }
+      } catch (err) {
+        console.error("Error accessing audio devices:", err);
+      }
+    };
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(getDevices)
+      .catch(console.error);
+
+    navigator.mediaDevices.addEventListener('devicechange', getDevices);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices);
+  }, []);
+
+  const handleDeviceChange = async (deviceId: string) => {
+    try {
+      // Convert NodeList to Array and change output for all audio elements
+      const audioElements = Array.from(document.querySelectorAll<HTMLAudioElement>('audio'));
+      
+      await Promise.all(audioElements.map(async (audioElement) => {
+        if ('setSinkId' in audioElement) {
+          await audioElement.setSinkId(deviceId);
+        }
+      }));
+      
+      setSelectedDevice(deviceId);
+      setIsOpen(false);
+    } catch (err) {
+      console.error("Error switching audio output:", err);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        state="secondary"
+        size="medium"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Speaker className="w-5 h-5" />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute bottom-full mb-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200">
+          <div className="p-2">
+            <div className="text-sm font-medium mb-2 px-2">Select Audio Output</div>
+            {devices.map((device) => (
+              <button
+                key={device.deviceId}
+                onClick={() => handleDeviceChange(device.deviceId)}
+                className={`w-full text-left px-3 py-2 text-sm rounded-md ${
+                  device.deviceId === selectedDevice
+                    ? "bg-cartesia-500 text-white"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                {device.label || `Speaker ${device.deviceId.slice(0, 4)}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 export default function Assistant({ title, logo, onConnect }: AssistantProps) {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [customPrompt, setCustomPrompt] = useState(
@@ -229,42 +313,43 @@ export default function Assistant({ title, logo, onConnect }: AssistantProps) {
     </motion.div>
   ), [customPrompt, handlePromptChange, applyPromptChanges, showPromptEditor, assistantName, handleNameChange, currentVoiceId, onSelectVoice]);
   const audioTileContent = useMemo(() => {
-   const conversationToolbar = (
-    <div className="fixed z-50 md:absolute left-1/2 bottom-4 md:bottom-auto md:top-1/2 -translate-y-1/2 -translate-x-1/2">
-      <motion.div
-        className="flex gap-3"
-        initial={{ opacity: 0, y: 25 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 25 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      >
-        <Button
-          state="destructive"
-          className=""
-          size="medium"
-          onClick={() => onConnect(false)}
+    const conversationToolbar = (
+      <div className="fixed z-50 md:absolute left-1/2 bottom-4 md:bottom-auto md:top-1/2 -translate-y-1/2 -translate-x-1/2">
+        <motion.div
+          className="flex gap-3"
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 25 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
         >
-          Disconnect
-        </Button>
-        <MicrophoneButton localMultibandVolume={localMultibandVolume} />
-        <Button
-          state="secondary"
-          size="medium"
-          onClick={() => setShowPromptEditor(true)}
-        >
-          Edit Prompt
-        </Button>
-        <Button
-          state="secondary"
-          size="medium"
-          style={{ backgroundColor: showVoices ? "rgba(0, 0, 0, 0.1)" : "" }}
-          onClick={() => setShowVoices(!showVoices)}
-        >
-          <MenuSVG />
-        </Button>
-      </motion.div>
-    </div>
-  );
+          <Button
+            state="destructive"
+            className=""
+            size="medium"
+            onClick={() => onConnect(false)}
+          >
+            Disconnect
+          </Button>
+          <MicrophoneButton localMultibandVolume={localMultibandVolume} />
+          <AudioOutputSelector />
+          <Button
+            state="secondary"
+            size="medium"
+            onClick={() => setShowPromptEditor(true)}
+          >
+            Edit Prompt
+          </Button>
+          <Button
+            state="secondary"
+            size="medium"
+            style={{ backgroundColor: showVoices ? "rgba(0, 0, 0, 0.1)" : "" }}
+            onClick={() => setShowVoices(!showVoices)}
+          >
+            <MenuSVG />
+          </Button>
+        </motion.div>
+      </div>
+    );
 
     
     const isLoading =
