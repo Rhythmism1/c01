@@ -60,7 +60,8 @@ async def entrypoint(ctx: JobContext):
         
         if isinstance(text, str):
             logger.debug(f"Processing string text: '{text}'")
-            if 'silent' in text.lower():
+            words = text.split()[:5]  # Get the first five words (or fewer if less than 5)
+            if any('silent' in word.lower() for word in words):
                 return ""
             return text
         else:
